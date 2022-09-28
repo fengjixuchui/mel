@@ -1,14 +1,20 @@
+extern void user_test(void) __attribute__((section(".ring3")));
 void main()
 {
         free_vram();
-        nextpage();
+        knextpage();
 
-        print("Mel.\n", 10);
-        print("Press any key to continue.\n\n", 13);
+        kprint("Mel.\n", 10);
+        kprint("Press any key to continue.\n\n", 13);
         
         read_keyboard();
+
         init_gdt();
         init_32bit_paging();
-        __asm__("mov esp, 0x20000000");
-        while(1);
+	init_idt();
+	init_pic();
+	asm("cli");
+
+	set_usermode(&user_test);
+	while(1);
 }
