@@ -1,51 +1,71 @@
-RAM=1G
+RAM=3G
+QEMU=qemu-system-i386 -m $(RAM)
+KERNEL=-kernel mel.elf
 CCFLAGS= -c -w -m32 -fno-stack-protector -masm=intel
-mel.elf : main.o init.o kprint.o lib.o gdt.o idt.o keyboard.o paging.o gdt_s.elf idt_s.elf irq.o exceptions.o ring3.elf keyboard_s.elf paging_s.elf pic.elf linker.ld boot.elf
-	ld -m elf_i386 -T linker.ld main.o init.o boot.elf kprint.o lib.o paging.o idt.o gdt.o keyboard.o gdt_s.elf idt_s.elf irq.o pic.elf exceptions.o ring3.elf keyboard_s.elf paging_s.elf -o mel.elf
 
-main.o : main.c
-	gcc $(CCFLAGS) -O2 main.c
-init.o : usermode/init.c
-	gcc $(CCFLAGS) -O2 usermode/init.c
-lib.o : lib/lib.c
-	gcc $(CCFLAGS) lib/lib.c
-kprint.o : lib/kprint.c
-	gcc $(CCFLAGS) lib/kprint.c
-gdt.o : gdt/gdt.c
-	gcc $(CCFLAGS) gdt/gdt.c
+OBJS = main.o init.elf boot.elf kprint.o kmisc.o paging.o idt.o gdt.o keyboard.o azerty.o gdt.elf idt.elf irq.o pic.elf exceptions.o handler.o handler.elf ring3.elf keyboard.elf paging.elf 
+
+mel.elf : $(OBJS) linker.ld
+	ld -m elf_i386 -T linker.ld $(OBJS) -o mel.elf
+
+%.o : %.c
+	gcc $(CCFLAGS) -O2 $<
+
+%.o : libkernel/%.c
+	gcc $(CCFLAGS) $<
+
+gdt.elf : gdt/gdt.s
+	as --32 gdt/gdt.s -o gdt.elf
+gdt.o : gdt/gdt.c gdt/gdt.h gdt/tss.h
+	gcc $(CCFLAGS) $< 
+
 idt.o : idt/idt.c
 	gcc $(CCFLAGS) idt/idt.c
-keyboard.o : keyboard/keyboard.c
-	gcc $(CCFLAGS) keyboard/keyboard.c
-paging.o : paging/paging.o
-	gcc $(CCFLAGS) paging/paging.c
-paging_s.elf : paging/paging.s
-	as --32 paging/paging.s -o paging_s.elf
-keyboard_s.elf : keyboard/keyboard.s
-	as --32 keyboard/keyboard.s -o keyboard_s.elf
-ring3.elf : usermode/ring3.s
-	as --32 usermode/ring3.s -o ring3.elf
-pic.elf : 8259_PIC/pic.s
-	as --32 8259_PIC/pic.s -o pic.elf
+idt.elf: idt/idt.s
+	as --32 idt/idt.s -o idt.elf
 irq.o : interrupts/irq/irq.c
 	gcc $(CCFLAGS) interrupts/irq/irq.c
 exceptions.o : interrupts/exceptions/exceptions.c
 	gcc $(CCFLAGS) interrupts/exceptions/exceptions.c
-idt_s.elf: idt/idt.s
-	as --32 idt/idt.s -o idt_s.elf
-gdt_s.elf : gdt/gdt.s
-	as --32 gdt/gdt.s -o gdt_s.elf
+
+%.o : syscalls/%.c
+	gcc $(CCFLAGS) -O2 $<
+handler.elf : syscalls/handler.s
+	as --32 $< -o handler.elf
+
+
+pic.elf : 8259_PIC/pic.s
+	as --32 8259_PIC/pic.s -o pic.elf
+
+%.o : keyboard/%.c
+	gcc $(CCFLAGS) $<
+keyboard.elf : keyboard/keyboard.s
+	as --32 keyboard/keyboard.s -o keyboard.elf
+
+paging.o : paging/paging.c
+	gcc $(CCFLAGS) paging/paging.c
+paging.elf : paging/paging.s
+	as --32 paging/paging.s -o paging.elf
+
+%.o : usermode/%.c
+	gcc $(CCFLAGS) -O2 $<
+ring3.elf : usermode/ring3.s
+	as --32 usermode/ring3.s -o ring3.elf
+
 boot.elf : boot/boot.s
 	as --32 boot/boot.s -o boot.elf
+init.elf : init.c
+	gcc $(CCFLAGS) -O2 init.c -o init.elf
+
 clean: 
 	rm *.o *.elf 
 run:
-	qemu-system-i386 -m $(RAM) -kernel mel.elf
+	$(QEMU) $(KERNEL)
 debug:
-	qemu-system-i386 -m $(RAM) -kernel mel.elf -d in_asm
+	$(QEMU) $(KERNEL) -d in_asm
 debug_cpu:
-	qemu-system-i386 -m $(RAM) -kernel mel.elf -d cpu
+	$(QEMU) $(KERNEL) -d cpu
 gdb:
-	qemu-system-i386 -m $(RAM) -s -S -kernel mel.elf
+	$(QEMU) -s -S $(KERNEL)
 all:
 	make clean && make && make run
