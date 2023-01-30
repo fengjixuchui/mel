@@ -3,16 +3,12 @@ ENTRY(_start)
 
 SECTIONS
 {
-	. = 0x20000000;
-	.ring3 BLOCK(4K) : ALIGN(4K)
-	{
-		*(.ring3)
-	}
         . = 0x00100000;
         .text BLOCK(4K) : ALIGN(4K)
         {
                 *(.text)
         }
+	. = 0x00200000;
         .data BLOCK(4K) : ALIGN(4K)
         {
                 *(.data)
@@ -21,4 +17,18 @@ SECTIONS
         {
                 *(.bss)
         }
+        . = 0x10000000;
+	
+        .ring3data BLOCK(4K) : ALIGN(4K)
+        {
+                *(.ring3data)
+		*(.ring3bss)
+        }
+	. = 0x20000000;
+	.ring3text BLOCK(4K) : ALIGN(4K)
+	{
+		*(.ring3text)
+	}
+
+
 }

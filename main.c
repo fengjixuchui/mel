@@ -14,15 +14,14 @@ void main()
 
         init_gdt();
 
-        map_directory(0, DEBUG); 
+        map_kernel_directory(0); 
+	init_user_directory(0, 0);
 			    
 	change_directory(0);
 	
 	enable_32bit_paging();
-
 	init_idt();
 	init_pic();
-
 	set_usermode(&user_test); // run our first usermode program.
 	while(1);
 }
